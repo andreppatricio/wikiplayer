@@ -40,3 +40,13 @@ The following table shows the results and times of the various algorithms across
 
 
 
+## Usage
+
+The search can be run using the command-line as follows:
+```bash
+./wikiplayer [start_page] [goal_page] [search_type] [--depth=value]
+```
+Where:
+- `start_page` and `goal_page` define the starting and ending pages of the desired path, which can be a full Wikipedia URL (https://en.wikipedia.org/wiki/Software_engineering) or just the final section of the URL representing the topic (Software_engineering).
+- `search_type` defines which search algorithm to use, can be `dfs` for DFS, `bfs` for BFS, and `bi_bfs` for BDBFS.
+- `--depth` is only needed when using DFS and is an integer defining the maximum depth of the search.
