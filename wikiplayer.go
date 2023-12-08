@@ -24,12 +24,14 @@ func main() {
 		path = bfs(start, end)
 
 	} else if type_of_search == "bi_bfs" {
-		// path = getWikiLinks(start)
 		path = bidirectional_bfs(start, end)
 	} else {
 		log.Fatalf("Type of search %s is not valid.", type_of_search)
 	}
 
+	if path == nil {
+		fmt.Println("No path found")
+	}
 	for _, p := range path {
 		fmt.Println(p)
 	}

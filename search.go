@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 )
 
 //
@@ -30,38 +29,45 @@ func dfs(start string, end string, max_depth int) []string {
 	path := []string{start}
 	pages_visited := make(map[string]int)
 
-	var recursiveHelper func(p []string)
-	recursiveHelper = func(p []string) {
-
+	var recursiveHelper func(p []string) ([]string, bool)
+	recursiveHelper = func(p []string) ([]string, bool) {
 		last := p[len(p)-1]
 
 		pages_visited[last] = len(p)
 
 		if last == end {
-			fmt.Println("FOUND PATH")
-			printWiki(p)
+			return p, true
 		}
 
 		if len(p) >= max_depth {
-			return
+			return nil, false
 		}
 
 		children := getWikiLinks(last)
 		for _, c := range children {
+
 			value, exists := pages_visited[c]
 			if !exists || len(p)+1 < value {
 				p = append(p, c)
-				recursiveHelper(p)
+				res, found := recursiveHelper(p)
+				if found {
+					return res, found
+				}
 				p = p[:len(p)-1]
 			}
 		}
+		return nil, false
 	}
-	recursiveHelper(path)
-	return path
+
+	result, found := recursiveHelper(path)
+	if found {
+		return result
+	} else {
+		return nil
+	}
 }
 
 func bfs(start string, end string) []string {
-	// durations := []float64{}
 	queue := Queue{}
 	pages_visited := make(map[string]bool)
 	parents := make(map[string]string)
@@ -69,19 +75,10 @@ func bfs(start string, end string) []string {
 	queue.Add(start)
 	pages_visited[start] = true
 
-	counter := 0
-	start_time := time.Now()
 	for !queue.IsEmpty() {
-		counter += 1
-		if counter%100 == 0 {
-			duration := time.Since(start_time).Seconds() / float64(counter)
-			fmt.Println("Page ", counter, " - Avg time per iteration: ", duration)
-		}
 		current := queue.Pop()
 		children := getWikiLinks(current)
-		// startt := time.Now()
 		queue.Add(children...)
-		// durations = append(durations, float64(time.Since(startt).Seconds()))
 
 		for _, c := range children {
 			if !pages_visited[c] {
@@ -99,7 +96,6 @@ func bfs(start string, end string) []string {
 }
 
 func bidirectional_bfs(start string, end string) []string {
-	// durations := []float64{}
 	start_queue := Queue{}
 	end_queue := Queue{}
 	start_visited := make(map[string]bool)
@@ -131,16 +127,9 @@ func bidirectional_bfs(start string, end string) []string {
 
 				if end_visited[c] {
 					possible_path := getBidirectionalPath(start, end, c, start_parents, end_parents)
-					// fmt.Println("Found possible connection (start path):", c)
-					// printWiki(possible_path)
 					if testBidirectionalPath(possible_path, c) {
-						fmt.Println("It is a real path!")
 						return possible_path
 					}
-					// else {
-					// 	fmt.Println("It is not a real path")
-					// 	// fmt.Scanln()
-					// }
 				}
 			}
 		}
@@ -152,16 +141,9 @@ func bidirectional_bfs(start string, end string) []string {
 
 				if start_visited[c] {
 					possible_path := getBidirectionalPath(start, end, c, start_parents, end_parents)
-					// fmt.Println("Found possible connection (end path):", c)
-					// printWiki(possible_path)
 					if testBidirectionalPath(possible_path, c) {
-						// fmt.Println("It is a real path!")
 						return possible_path
 					}
-					// else {
-					// 	fmt.Println("It is not a real path")
-					// 	// fmt.Scanln()
-					// }
 				}
 			}
 		}
