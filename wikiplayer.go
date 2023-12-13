@@ -44,7 +44,9 @@ func main() {
 	} else if type_of_search == "bi_bfs" {
 		path = bidirectional_bfs(start, end)
 	} else if type_of_search == "cbfs" {
-		path = cbfs(start, end, 4)
+		path = cbfs(start, end, 10)
+	} else if type_of_search == "cbi_bfs" {
+		path = c_bidirectional_bfs(start, end, 10)
 	} else {
 		log.Fatalf("Type of search %s is not valid.", type_of_search)
 	}

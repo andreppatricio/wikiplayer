@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 )
 
@@ -108,6 +109,9 @@ type Node struct {
 
 func cbfs(start, end string, workers int) []string {
 
+	// runtime.GOMAXPROCS(runtime.NumCPU())
+	// runtime.GOMAXPROCS(1)
+
 	queue := CQueue{}
 	childrenQueue := CQueue{}
 
@@ -115,7 +119,7 @@ func cbfs(start, end string, workers int) []string {
 	var wg sync.WaitGroup
 	var result []string
 
-	ch := make(chan struct{}, 10)
+	ch := make(chan struct{}, workers)
 
 	startNode := Node{Value: start, Parent: nil}
 	queue.Add(startNode)
@@ -229,6 +233,145 @@ func bidirectional_bfs(start string, end string) []string {
 	return nil
 }
 
+// func exploreChidrenBidirectional(current Node, wg *sync.WaitGroup, myVisited, otherVisited *sync.Map, myChildren *CQueue) {
+
+// 	defer func() {
+// 		wg.Done()
+// 	}()
+
+// 	children := getWikiLinks(current.Value)
+// 	for _, c := range children {
+// 		_, exists := myVisited.Load(c)
+// 		if !exists {
+// 			childrenNode := Node{Value: c, Parent: &current}
+// 			myChildren.Add(childrenNode)
+// 			myVisited.Store(c, true)
+
+// 			_, otherExists := otherVisited.Load(c)
+// 			if otherExists {
+// 				// TODO: add logic to get and test bi-path
+// 				fmt.Println("EXISTS")
+// 				possiblePath := getBidirectionalPath()
+// 			}
+// 		}
+// 	}
+// }
+
+func c_bidirectional_bfs(start string, end string, workers int) []string {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	// runtime.GOMAXPROCS(1)
+
+	startQueue := CQueue{}
+	endQueue := CQueue{}
+	startChildren := CQueue{}
+	endChildren := CQueue{}
+	var wg sync.WaitGroup
+	var startVisited sync.Map
+	var endVisited sync.Map
+	var result []string
+
+	ch := make(chan struct{}, workers)
+
+	// start_parents := make(map[string]string)
+	// end_parents := make(map[string]string)
+	startNode := Node{Value: start, Parent: nil}
+	endNode := Node{Value: end, Parent: nil}
+	startQueue.Add(startNode)
+	endQueue.Add(endNode)
+
+	startVisited.Store(start, startNode)
+	endVisited.Store(end, endNode)
+
+	for {
+		for !startQueue.IsEmpty() && !endQueue.IsEmpty() && result == nil {
+
+			if !startQueue.IsEmpty() {
+				startCurrent := startQueue.Pop()
+
+				ch <- struct{}{}
+				wg.Add(1)
+				go func(current Node) {
+					defer func() {
+						<-ch
+						wg.Done()
+					}()
+
+					children := getWikiLinks(current.Value)
+					for _, c := range children {
+						_, exists := startVisited.Load(c)
+						if !exists {
+							childrenNode := Node{Value: c, Parent: &current}
+							startChildren.Add(childrenNode)
+							startVisited.Store(c, childrenNode)
+
+							endNode, endExists := endVisited.Load(c)
+							if endExists {
+								// fmt.Println("EXISTS start", c)
+								endNode := endNode.(Node)
+								// fmt.Println(childrenNode, endNode)
+								possible_path := getNodeBidirectionalPath(childrenNode, endNode)
+								// fmt.Println(possible_path)
+								// fmt.Scanln()
+								if testBidirectionalPath(possible_path, c) && result == nil {
+									result = possible_path
+								}
+
+							}
+						}
+					}
+				}(startCurrent)
+			}
+
+			if !endQueue.IsEmpty() {
+				endCurrent := endQueue.Pop()
+
+				ch <- struct{}{}
+				wg.Add(1)
+				go func(current Node) {
+					defer func() {
+						<-ch
+						wg.Done()
+					}()
+
+					children := getWikiLinks(current.Value)
+					for _, c := range children {
+						_, exists := endVisited.Load(c)
+						if !exists {
+							childrenNode := Node{Value: c, Parent: &current}
+							endChildren.Add(childrenNode)
+							endVisited.Store(c, childrenNode)
+
+							startNode, startExists := startVisited.Load(c)
+							if startExists {
+								// fmt.Println("EXISTS end", c)
+								startNode := startNode.(Node)
+								possible_path := getNodeBidirectionalPath(startNode, childrenNode)
+								// fmt.Println(possible_path)
+								// fmt.Scanln()
+								if testBidirectionalPath(possible_path, c) && result == nil {
+									result = possible_path
+								}
+							}
+						}
+					}
+				}(endCurrent)
+			}
+
+		}
+		wg.Wait()
+
+		if result == nil {
+			startQueue = CQueue{items: startChildren.items}
+			startChildren = CQueue{}
+			endQueue = CQueue{items: endChildren.items}
+			endChildren = CQueue{}
+		} else {
+			break
+		}
+	}
+	return result
+}
+
 func testBidirectionalPath(path []string, connection string) bool {
 
 	var connection_id int = -1
@@ -251,6 +394,22 @@ func testBidirectionalPath(path []string, connection string) bool {
 		current_ind += 1
 	}
 	return true
+}
+
+func getNodeBidirectionalPath(startNode, endNode Node) []string {
+	startPath := []string{startNode.Value}
+	endPath := []string{}
+
+	for startNode.Parent != nil {
+		startPath = append([]string{startNode.Parent.Value}, startPath...)
+		startNode = *startNode.Parent
+	}
+	for endNode.Parent != nil {
+		endPath = append(endPath, endNode.Parent.Value)
+		endNode = *endNode.Parent
+	}
+	path := append(startPath, endPath...)
+	return path
 }
 
 func getBidirectionalPath(start string, end string, connection string, start_parents map[string]string, end_parents map[string]string) []string {
