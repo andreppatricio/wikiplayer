@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 )
 
 //
@@ -76,8 +77,12 @@ func bfs(start string, end string) []string {
 	pages_visited[start] = true
 
 	for !queue.IsEmpty() {
+		// check channel antes de lançar go routine
+		// add
+		//comeca go routine
 		current := queue.Pop()
 		children := getWikiLinks(current)
+		// TODO: only add after verification that was not visited already
 		queue.Add(children...)
 
 		for _, c := range children {
@@ -86,13 +91,86 @@ func bfs(start string, end string) []string {
 				pages_visited[c] = true
 
 				if c == end {
+					// mensagem channel a dizer para parar tudo
 					return getPath(start, end, parents)
 				}
 			}
 		}
 	}
+	// wait
 	return nil
+}
 
+type Node struct {
+	Value  string
+	Parent *Node
+}
+
+func cbfs(start, end string, workers int) []string {
+
+	queue := CQueue{}
+	childrenQueue := CQueue{}
+
+	var pagesVisited sync.Map
+	var wg sync.WaitGroup
+	var result []string
+
+	ch := make(chan struct{}, 10)
+
+	startNode := Node{Value: start, Parent: nil}
+	queue.Add(startNode)
+	pagesVisited.Store(start, true)
+
+	for {
+		for !queue.IsEmpty() && result == nil {
+			current := queue.Pop()
+
+			ch <- struct{}{}
+			wg.Add(1)
+			go func(current Node) {
+				defer func() {
+					<-ch
+					wg.Done()
+				}()
+
+				children := getWikiLinks(current.Value)
+
+				for _, c := range children {
+					_, exists := pagesVisited.Load(c)
+					if !exists {
+						childrenNode := Node{Value: c, Parent: &current}
+						childrenQueue.Add(childrenNode)
+						pagesVisited.Store(c, true)
+
+						if c == end && result == nil {
+							result = GetParentsPath(childrenNode)
+						}
+					}
+				}
+			}(current)
+
+		}
+		wg.Wait()
+
+		if result == nil {
+			queue = CQueue{items: childrenQueue.items}
+			childrenQueue = CQueue{}
+		} else {
+			break
+		}
+
+	}
+	return result
+}
+
+func GetParentsPath(node Node) []string {
+	result := []string{node.Value}
+	for node.Parent != nil {
+		result = append([]string{node.Parent.Value}, result...)
+		node = *node.Parent
+	}
+	// result = append(result, node.Parent.Value)
+	return result
 }
 
 func bidirectional_bfs(start string, end string) []string {
@@ -200,6 +278,19 @@ func getBidirectionalPath(start string, end string, connection string, start_par
 
 }
 
+func cGetPath(start string, end string, parents sync.Map) []string {
+	path := []string{}
+	current := end
+
+	for current != start {
+		path = append([]string{current}, path...)
+		res, _ := parents.Load(current)
+		current, _ = res.(string)
+	}
+	path = append([]string{start}, path...)
+	return path
+}
+
 func getPath(start string, end string, parents map[string]string) []string {
 	path := []string{}
 	current := end
@@ -220,6 +311,68 @@ func getParentDepth(current string, parents map[string]string) int {
 		current, exists = parents[current]
 	}
 	return counter
+}
+
+// Concurrency Queue Implementation
+type CQueue struct {
+	items []Node
+	lock  sync.Mutex
+}
+
+func (q *CQueue) Add(item Node) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	q.items = append(q.items, item)
+}
+
+func (q *CQueue) AddAll(items ...Node) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	q.items = append(q.items, items...)
+}
+
+func (q *CQueue) Pop() Node {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	if len(q.items) == 0 {
+		return Node{}
+	}
+	item := q.items[0]
+	q.items = q.items[1:]
+	return item
+}
+
+func (q *CQueue) IsEmpty() bool {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	return len(q.items) == 0
+}
+
+// Queue Nodes
+
+type NQueue struct {
+	items []Node
+}
+
+func (q *NQueue) Add(item Node) {
+	q.items = append(q.items, item)
+}
+
+func (q *NQueue) AddAll(items ...Node) {
+	q.items = append(q.items, items...)
+}
+
+func (q *NQueue) Pop() Node {
+	if len(q.items) == 0 {
+		return Node{}
+	}
+	item := q.items[0]
+	q.items = q.items[1:]
+	return item
+}
+
+func (q *NQueue) IsEmpty() bool {
+	return len(q.items) == 0
 }
 
 // for !stack.IsEmpty() {

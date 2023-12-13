@@ -9,6 +9,8 @@ import (
 
 func main() {
 
+	// var result []string
+	// fmt.Println(result, result == nil, result != nil)
 	args := os.Args[1:]
 
 	if len(args) < 3 {
@@ -41,6 +43,8 @@ func main() {
 
 	} else if type_of_search == "bi_bfs" {
 		path = bidirectional_bfs(start, end)
+	} else if type_of_search == "cbfs" {
+		path = cbfs(start, end, 4)
 	} else {
 		log.Fatalf("Type of search %s is not valid.", type_of_search)
 	}
