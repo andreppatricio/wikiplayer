@@ -29,7 +29,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if (type_of_search == "bfs" || type_of_search == "bi_bfs") && len(args) >= 4 {
+	if (type_of_search == "bfs" || type_of_search == "bdbfs") && len(args) >= 4 {
 		var err error
 		workers, err = strconv.Atoi(args[3])
 		if err != nil {
@@ -49,7 +49,7 @@ func main() {
 	} else if type_of_search == "bfs" {
 		path = bfs(start, end, workers)
 
-	} else if type_of_search == "bi_bfs" {
+	} else if type_of_search == "bdbfs" {
 		path = bidirectional_bfs(start, end, workers)
 
 	} else {
