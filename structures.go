@@ -3,7 +3,48 @@ package main
 import (
 	"errors"
 	"slices"
+	"sync"
 )
+
+type Node struct {
+	Value  string
+	Parent *Node
+}
+
+// Concurrency Queue Implementation
+type CQueue struct {
+	items []Node
+	lock  sync.Mutex
+}
+
+func (q *CQueue) Add(item Node) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	q.items = append(q.items, item)
+}
+
+func (q *CQueue) AddAll(items ...Node) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	q.items = append(q.items, items...)
+}
+
+func (q *CQueue) Pop() Node {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	if len(q.items) == 0 {
+		return Node{}
+	}
+	item := q.items[0]
+	q.items = q.items[1:]
+	return item
+}
+
+func (q *CQueue) IsEmpty() bool {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	return len(q.items) == 0
+}
 
 // Stack Implementation
 
